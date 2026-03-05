@@ -11,6 +11,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.function.Function;
+import java.util.logging.Logger;
 
 /**
  * Implement the two methods below. We expect this class to be stateless and thread safe.
@@ -30,6 +31,8 @@ public class Census {
      * Factory for iterators.
      */
     private final Function<String, Census.AgeInputIterator> iteratorFactory;
+
+    private final Logger logger = Logger.getLogger(Census.class.getName());
 
     /**
      * Creates a new Census calculator.
@@ -124,12 +127,12 @@ public class Census {
     public String[] top3Ages(List<String> regionNames) {
         try {
             Map<Integer, Integer> ageCountMap = getCountAgesAsync(regionNames);
+            List<Map.Entry<Integer, Integer>> top3AgesList = findTop3Ages(ageCountMap);
+            return formatTop3ToString(top3AgesList);
         } catch (InterruptedException | ExecutionException e) {
+            logger.severe("failed to process region: "+ regionNames + e);
             return new String[]{};
         }
-
-
-        throw new UnsupportedOperationException();
     }
 
     /**
