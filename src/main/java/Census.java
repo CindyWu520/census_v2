@@ -32,7 +32,7 @@ public class Census {
      */
     private final Function<String, Census.AgeInputIterator> iteratorFactory;
 
-    private final Logger logger = Logger.getLogger(Census.class.getName());
+    private static final Logger logger = Logger.getLogger(Census.class.getName()); // TODO: create log
 
     /**
      * Creates a new Census calculator.
@@ -48,79 +48,67 @@ public class Census {
      * the 3 most common ages in the format specified by {@link #OUTPUT_FORMAT}.
      */
     public String[] top3Ages(String region) {
-        Map<Integer, Integer> ageCountMap = getCountAges(region);
-        List<Map.Entry<Integer, Integer>> top3List = findTop3Ages(ageCountMap);
-        return formatTop3ToString(top3List);
+        // get the age and corresponding count that from a certain region
+        Map<Integer, Integer> ageCountMap = getAgeCount(region);
+        // get the top 3 age and count
+        List<Map.Entry<Integer, Integer>> top3AgesList = getTop3AgesList(ageCountMap);
+        // format
+        return formatTop3Ages(top3AgesList);
     }
 
-    private String[] formatTop3ToString(List<Map.Entry<Integer, Integer>> top3List) {
-        String[] result = new String[top3List.size()];
-
-        // start from 1st position
+    public String[] formatTop3Ages(List<Map.Entry<Integer, Integer>> top3AgesList) {
+        String[] top3Ages = new String[top3AgesList.size()]; // TODO: initialize the String[]
         int position = 1;
-        int concurrent = top3List.isEmpty() ? 0 : top3List.get(0).getValue();
-        for (int i = 0; i < top3List.size(); i++) {
-            Map.Entry<Integer, Integer> entry = top3List.get(i);
-            if (entry.getValue() != concurrent) {
-                // lower count then change to lower position
+        int currentCount = top3AgesList.isEmpty() ? 0 : top3AgesList.get(0).getValue();
+        for (int i = 0; i < top3AgesList.size(); i++) { // TODO: for loop using int i
+            int count = top3AgesList.get(i).getValue();
+            int age = top3AgesList.get(i).getKey();
+            if (currentCount != count) {
                 position++;
-                concurrent = entry.getValue();
+                currentCount = count;
             }
-            result[i] = String.format(OUTPUT_FORMAT, position, entry.getKey(), entry.getValue());
+            top3Ages[i] = String.format(OUTPUT_FORMAT, position, age, count);
         }
-        return result;
+        return top3Ages;
     }
 
-    private List<Map.Entry<Integer, Integer>> findTop3Ages(Map<Integer, Integer> ageCountMap) {
-        // sort by count DESC, then tie-break by age
-        List<Map.Entry<Integer, Integer>> sortedList = new ArrayList<>(ageCountMap.entrySet());
+    public Map<Integer, Integer> getAgeCount(String region) {
+        Map<Integer, Integer> ageCountMap = new HashMap<>();
+        try (AgeInputIterator iterator = iteratorFactory.apply(region)) { // TODO: try-with-resource
+            while (iterator.hasNext()) {
+                int age = iterator.next();
+                if (age < 0) {
+                    break;
+                }
+                ageCountMap.merge(age, 1, Integer::sum); // TODO: merge 1
+            }
+        } catch (Exception e) {
+            logger.severe("Failed to process region: " + region);
+        }
+        return ageCountMap;
+    }
+
+    public List<Map.Entry<Integer, Integer>> getTop3AgesList(Map<Integer, Integer> ageCountMap) {
+        // sort the Map via count desc, age asc
+        List<Map.Entry<Integer, Integer>> sortedList = new ArrayList<>(ageCountMap.entrySet()); // TODO: can't pass hashMap to list
         sortedList.sort(Map.Entry.<Integer, Integer>comparingByValue(Comparator.reverseOrder())
                 .thenComparing(Map.Entry.comparingByKey()));
 
         List<Map.Entry<Integer, Integer>> top3List = new ArrayList<>();
-        // rank position: 0:1st, 1:2nd, 2:3rd
-        int position = 0;
-        // start from the highest count
+        // select the top 3
+        int position = 1; // TODO: only care about the position, instead of entry.getKey()
         int currentCount = sortedList.isEmpty() ? 0 : sortedList.get(0).getValue();
-        for (Map.Entry<Integer, Integer> entry : sortedList) {
-            if (position < 2 & entry.getValue().equals(currentCount)) {
-                // same count, same position
-                top3List.add(entry);
-            } else if (position < 2) {
-                // lower count, lower position
-                top3List.add(entry);
+        for (Map.Entry<Integer, Integer> entry : sortedList) { // TODO: iterator the entry-set list
+            if (position == 3) {
+                break; // TODO: kill the for loop
+            }
+            if (entry.getValue() != currentCount) {
                 position++;
                 currentCount = entry.getValue();
             }
+            top3List.add(entry);
         }
         return top3List;
-    }
-
-    /**
-     * calculate the age and count for a single region
-     *
-     * @param region a single region
-     * @return return a map of age(key) and count(value)
-     */
-    private Map<Integer, Integer> getCountAges(String region) {
-        Map<Integer, Integer> countAge = new HashMap<>();
-        try (AgeInputIterator iterator = iteratorFactory.apply(region)) {
-            while (iterator.hasNext()) {
-                int age = iterator.next();
-                // remove invalid value
-                if (age < 0) {
-                    continue;
-                }
-                if (countAge.containsKey(age)) {
-                    countAge.put(age, countAge.get(age) + 1);
-                } else {
-                    countAge.put(age, 1);
-                }
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to iterate region: " + region, e);
-        }
-        return countAge;
     }
 
     /**
@@ -129,50 +117,36 @@ public class Census {
      * We expect you to make use of all cores in the machine, specified by {@link #CORES).
      */
     public String[] top3Ages(List<String> regionNames) {
-        try {
-            Map<Integer, Integer> ageCountMap = getCountAgesAsync(regionNames);
-            List<Map.Entry<Integer, Integer>> top3AgesList = findTop3Ages(ageCountMap);
-            return formatTop3ToString(top3AgesList);
-        } catch (InterruptedException | ExecutionException e) {
-            logger.severe("failed to process region: "+ regionNames + e);
-            return new String[]{};
-        }
+        // get the age and corresponding count that from a certain region
+        Map<Integer, Integer> ageCountMap = getAgeCount(regionNames);
+        // get the top 3 age and count
+        List<Map.Entry<Integer, Integer>> top3AgesList = getTop3AgesList(ageCountMap);
+        // format
+        return formatTop3Ages(top3AgesList);
     }
 
-    /**
-     * calculate the age and count for a list region
-     *
-     * @param regionNames a list of region
-     * @return return a map of age(key) and count(value)
-     */
-    private Map<Integer, Integer> getCountAgesAsync(List<String> regionNames) throws InterruptedException, ExecutionException{
-        ExecutorService executor = Executors.newFixedThreadPool(CORES);
+    public Map<Integer, Integer> getAgeCount(List<String> regionNames) {
+        ExecutorService executor = Executors.newFixedThreadPool(CORES); // TODO: create executor
+        Map<Integer, Integer> ageCountMap = new HashMap<>();
         try {
             List<Callable<Map<Integer, Integer>>> tasks = new ArrayList<>();
             for (String region : regionNames) {
-                tasks.add(() -> getCountAges(region));
+                tasks.add(() -> getAgeCount(region)); // TODO: lambda
             }
             List<Future<Map<Integer, Integer>>> futures = executor.invokeAll(tasks);
-
-            // merge all regions into one map
-            Map<Integer, Integer> result = new HashMap<>();
-            for (Future<Map<Integer, Integer>> future : futures) {
-                Map<Integer, Integer> regionMap = future.get();
-                for (Map.Entry<Integer, Integer> entry : regionMap.entrySet()) {
+            for (Future<Map<Integer, Integer>> f : futures) {
+                for (Map.Entry<Integer, Integer> entry : f.get().entrySet()) { // TODO: iterator entry set to map.entry
                     int age = entry.getKey();
                     int count = entry.getValue();
-                    if (result.containsKey(age)) {
-                        // add count across regions
-                        result.put(age, result.get(age) + count);
-                    } else {
-                        result.put(age, count);
-                    }
+                    ageCountMap.merge(age, count, Integer::sum);
                 }
             }
-            return result;
+        } catch (InterruptedException | ExecutionException e) {
+            logger.severe("Failed to process regions: " + regionNames + e);
         } finally {
             executor.shutdown();
         }
+        return ageCountMap;
     }
 
     /**

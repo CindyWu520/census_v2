@@ -19,6 +19,7 @@ import java.util.stream.Stream;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class TestCensus {
@@ -32,7 +33,7 @@ public class TestCensus {
                 registerIterator(new AgeIteratorWrapper(Collections.emptyIterator(), "empty"));
         String[] strings = census.top3Ages("empty");
         assertTrue("Iterator hasn't been closed.", iterator.closed);
-        assertTrue("Invalid result null.", strings != null);
+        assertNotNull("Invalid result null.", strings);
         System.out.println(Arrays.toString(strings));
         assertArrayEquals(new String[]{}, strings);
     }
@@ -59,7 +60,7 @@ public class TestCensus {
         } catch (RuntimeException e) {
             Assert.fail("Exceptions aren't being treated.");
         } finally {
-            assertTrue("Iterator hasn't been closed.", iterator.closed);
+            assertTrue("Iterator hasn't been closed.", iterator.closed); // TODO: if failed then throw message
         }
     }
 
@@ -71,7 +72,7 @@ public class TestCensus {
             String[] strings = census.top3Ages("invalidAge");
             System.out.println("Invalid ages ignored. Good one!");
             assertTrue("Iterator hasn't been closed.", iterator.closed);
-            assertTrue("Invalid result null.", strings != null);
+            assertNotNull("Invalid result null.", strings);
             System.out.println(Arrays.toString(strings));
             assertArrayEquals(new String[]{"1:0=3", "2:1=2", "3:2=1"}, strings);
         } catch (RuntimeException e) {
@@ -84,10 +85,10 @@ public class TestCensus {
     @Test
     public void testCensusSingle_10_000_people_valid() {
         AgeIteratorWrapper iterator =
-                registerIterator(new AgeIteratorWrapper(newPseudoRandomIterator(10_000), "10_000"));
+                registerIterator(new AgeIteratorWrapper(newPseudoRandomIterator(10_000), "10_000"));// TODO: 10_000 is 10,000 in java
         String[] strings = census.top3Ages("10_000");
         assertTrue("Iterator hasn't been closed.", iterator.closed);
-        assertTrue("Invalid result null.", strings != null);
+        assertNotNull("Invalid result null.", strings);
         System.out.println(Arrays.toString(strings));
         assertArrayEquals(new String[]{"1:138=93", "2:10=85", "2:35=85", "3:90=84"}, strings);
     }
@@ -101,7 +102,7 @@ public class TestCensus {
 
         String[] strings = census.top3Ages(iterators.stream().map(e -> e.region).collect(Collectors.toList()));
         assertFalse("Iterator hasn't been closed.", iterators.stream().anyMatch(e -> !e.closed));
-        assertTrue("Invalid result null.", strings != null);
+        assertNotNull("Invalid result null.", strings);
     }
 
     @Test
@@ -113,7 +114,7 @@ public class TestCensus {
 
         String[] strings = census.top3Ages(Stream.concat(Stream.of("invalid"), iterators.stream().map(e -> e.region)).collect(Collectors.toList()));
         assertFalse("Iterator hasn't been closed.", iterators.stream().anyMatch(e -> !e.closed));
-        assertTrue("Invalid result null.", strings != null);
+        assertNotNull("Invalid result null.", strings);
     }
 
     @Test
@@ -132,7 +133,7 @@ public class TestCensus {
 
         String[] strings = census.top3Ages(Stream.concat(Stream.of("invalid"), iterators.stream().map(e -> e.region)).collect(Collectors.toList()));
         assertFalse("Iterator hasn't been closed.", iterators.stream().anyMatch(e -> !e.closed));
-        assertTrue("Invalid result null.", strings != null);
+        assertNotNull("Invalid result null.", strings);
     }
 
     @Test
@@ -144,7 +145,7 @@ public class TestCensus {
 
         String[] strings = census.top3Ages(iterators.stream().map(e -> e.region).collect(Collectors.toList()));
         assertFalse("Iterator hasn't been closed.", iterators.stream().anyMatch(e -> !e.closed));
-        assertTrue("Invalid result null.", strings != null);
+        assertNotNull("Invalid result null.", strings);
         System.out.println(Arrays.toString(strings));
         assertArrayEquals(new String[]{"1:32=254", "2:53=217", "3:123=213"}, strings);
     }
@@ -161,7 +162,7 @@ public class TestCensus {
 
         String[] strings = census.top3Ages(iterators.stream().map(e -> e.region).collect(Collectors.toList()));
         assertFalse("Iterator hasn't been closed.", iterators.stream().anyMatch(e -> !e.closed));
-        assertTrue("Invalid result null.", strings != null);
+        assertNotNull("Invalid result null.", strings);
         System.out.println(Arrays.toString(strings));
         assertArrayEquals(new String[]{"1:0=2500", "1:1=2500", "1:2=2500", "2:3=2499"}, strings);
     }
@@ -170,6 +171,13 @@ public class TestCensus {
 
     private Iterator<Integer> newPseudoRandomIterator(int n) {
         Random random = new Random(1000);
+//        Map<Integer, Long> map = IntStream.range(0, n)
+//                .map(e -> Math.abs(random.nextInt() % 150))
+//                .boxed()
+//                .collect(Collectors.groupingBy(e -> e, Collectors.counting()));
+//        System.out.println(map.get(35));
+//        System.out.println(map.get(10));
+
         return IntStream.range(0, n).map(e -> {
             try {
                 Thread.sleep(1);
@@ -179,11 +187,12 @@ public class TestCensus {
             if (e < 1) {
                 return 35; // Just so we have 10 and 35 as 84 in total.
             }
-            return Math.abs(random.nextInt() % 150);
+            return Math.abs(random.nextInt() % 150); // TODO: abs: absolutely, 0~149
         }).iterator();
     }
 
     private AgeIteratorWrapper registerIterator(AgeIteratorWrapper iterator) {
+
         createdIterators.put(iterator.region, iterator);
         return iterator;
     }
@@ -193,7 +202,7 @@ public class TestCensus {
                 .orElseThrow(() -> new RuntimeException("Couldn't find region " + region));
     }
 
-    private class AgeIteratorWrapper implements Census.AgeInputIterator {
+    private class AgeIteratorWrapper implements Census.AgeInputIterator { // TODO: implement interface
         private boolean closed;
         private String region;
         private Iterator<Integer> delegate;
