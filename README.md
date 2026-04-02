@@ -8,7 +8,6 @@ A thread-safe, stateless Java class that calculates the top 3 most common ages a
 - No external dependencies
 
 ## Setup
-
 ### iterator_wrapper_architecture
 ![iterator_wrapper_architecture](docs/iterator_wrapper_architecture.svg)
 ```java
